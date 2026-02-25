@@ -1,0 +1,916 @@
+/* ============================
+ * RN존 매매법 — 글로벌 디자인 시스템
+ * 프리미엄 다크 모드 + 글래스모피즘
+ * ============================ */
+
+/* ── Google Fonts (Inter) ── */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+/* ── CSS 변수 (디자인 토큰) ── */
+:root {
+  /* 배경 계층 */
+  --bg-base: #06060f;
+  --bg-surface: #0d0d1a;
+  --bg-card: rgba(20, 20, 40, 0.6);
+  --bg-card-hover: rgba(30, 30, 55, 0.7);
+
+  /* 글래스모피즘 */
+  --glass-border: rgba(255, 255, 255, 0.06);
+  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  --glass-blur: blur(20px);
+
+  /* 액센트 색상 */
+  --accent-cyan: #00e5ff;
+  --accent-gold: #ffd54f;
+  --accent-magenta: #ff4081;
+  --accent-green: #00e676;
+  --accent-red: #ff5252;
+  --accent-blue: #448aff;
+
+  /* 캔들 색상 (한국 시장) */
+  --candle-up: #ff1744;
+  /* 양봉: 빨강 */
+  --candle-down: #2979ff;
+  /* 음봉: 파랑 */
+
+  /* 텍스트 */
+  --text-primary: #e8eaf0;
+  --text-secondary: rgba(232, 234, 240, 0.6);
+  --text-muted: rgba(232, 234, 240, 0.35);
+
+  /* 간격 */
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 32px;
+  --space-2xl: 48px;
+
+  /* 반지름 */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+
+  /* 폰트 */
+  --font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+}
+
+/* ── 리셋 ── */
+*,
+*::before,
+*::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  font-size: 16px;
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: var(--font-family);
+  background: var(--bg-base);
+  color: var(--text-primary);
+  line-height: 1.6;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ── 앱 레이아웃 ── */
+.app {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: var(--space-lg);
+}
+
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-lg) 0;
+  border-bottom: 1px solid var(--glass-border);
+  margin-bottom: var(--space-xl);
+}
+
+.app-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  background: linear-gradient(135deg, var(--accent-cyan), var(--accent-gold));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  letter-spacing: -0.5px;
+}
+
+.app-subtitle {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  font-weight: 400;
+}
+
+/* ── 메인 그리드 ── */
+.main-grid {
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  gap: var(--space-lg);
+}
+
+.left-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+}
+
+.right-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+}
+
+/* ── 글래스 카드 ── */
+.glass-card {
+  background: var(--bg-card);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--glass-shadow);
+  padding: var(--space-lg);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.glass-card:hover {
+  background: var(--bg-card-hover);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.card-title {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: var(--text-muted);
+  margin-bottom: var(--space-md);
+}
+
+/* ── 서버 상태 표시 ── */
+.server-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  animation: pulse-dot 2s ease-in-out infinite;
+}
+
+.status-dot.live {
+  background: var(--accent-green);
+}
+
+.status-dot.mock {
+  background: var(--accent-gold);
+}
+
+.status-dot.checking {
+  background: var(--accent-blue);
+}
+
+.status-dot.offline {
+  background: var(--accent-red);
+}
+
+.status-text {
+  font-family: var(--font-mono);
+  letter-spacing: 0.5px;
+}
+
+/* ── 검색 영역 ── */
+.stock-search-area {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.search-container {
+  position: relative;
+}
+
+.search-input-wrap {
+  display: flex;
+  align-items: center;
+  background: var(--bg-card);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-sm) var(--space-md);
+  transition: all 0.25s ease;
+}
+
+.search-input-wrap:focus-within {
+  border-color: var(--accent-cyan);
+  box-shadow: 0 0 20px rgba(0, 229, 255, 0.1);
+}
+
+.search-icon {
+  font-size: 1rem;
+  margin-right: var(--space-sm);
+}
+
+.search-input {
+  flex: 1;
+  background: none;
+  border: none;
+  color: var(--text-primary);
+  font-family: var(--font-family);
+  font-size: 0.9rem;
+  outline: none;
+}
+
+.search-input::placeholder {
+  color: var(--text-muted);
+}
+
+.search-loading {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.search-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  background: var(--bg-surface);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+  z-index: 100;
+  max-height: 300px;
+  overflow-y: auto;
+  animation: slideDown 0.2s ease;
+}
+
+.search-result-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: var(--space-sm) var(--space-md);
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--glass-border);
+  color: var(--text-primary);
+  cursor: pointer;
+  font-family: var(--font-family);
+  transition: background 0.15s ease;
+}
+
+.search-result-item:hover {
+  background: rgba(0, 229, 255, 0.06);
+}
+
+.search-result-item:last-child {
+  border-bottom: none;
+}
+
+.result-name {
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+
+.result-meta {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+}
+
+/* ── 에러 배너 ── */
+.error-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-sm) var(--space-md);
+  background: rgba(255, 82, 82, 0.1);
+  border: 1px solid rgba(255, 82, 82, 0.3);
+  border-radius: var(--radius-md);
+  color: var(--accent-red);
+  font-size: 0.85rem;
+  margin-top: var(--space-md);
+}
+
+.retry-btn {
+  background: rgba(255, 82, 82, 0.2);
+  border: 1px solid rgba(255, 82, 82, 0.4);
+  color: var(--accent-red);
+  padding: 4px 12px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 0.75rem;
+  font-family: var(--font-family);
+  transition: all 0.2s ease;
+}
+
+.retry-btn:hover {
+  background: rgba(255, 82, 82, 0.3);
+}
+
+/* ── 서버 안내 명령어 ── */
+.server-cmd {
+  display: inline-block;
+  background: rgba(0, 229, 255, 0.1);
+  border: 1px solid rgba(0, 229, 255, 0.3);
+  color: var(--accent-cyan);
+  padding: 8px 20px;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: 0.9rem;
+}
+
+/* ── 종목 선택기 (최근 탭) ── */
+.stock-selector {
+  display: flex;
+  gap: var(--space-sm);
+  overflow-x: auto;
+  padding-bottom: var(--space-sm);
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
+}
+
+.stock-tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--glass-border);
+  background: var(--bg-card);
+  cursor: pointer;
+  transition: all 0.25s ease;
+  white-space: nowrap;
+  min-width: 120px;
+}
+
+.stock-tab:hover {
+  border-color: rgba(255, 255, 255, 0.15);
+  background: var(--bg-card-hover);
+  transform: translateY(-2px);
+}
+
+.stock-tab.active {
+  border-color: var(--accent-cyan);
+  background: rgba(0, 229, 255, 0.08);
+  box-shadow: 0 0 20px rgba(0, 229, 255, 0.1);
+}
+
+.stock-tab-name {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.stock-tab-price {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  margin-top: 2px;
+}
+
+.stock-tab-sector {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+/* ── 차트 ── */
+.chart-container {
+  width: 100%;
+  height: 450px;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+/* ── 대시보드 카드 그리드 ── */
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-md);
+}
+
+.dash-card {
+  background: var(--bg-card);
+  backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-md);
+  transition: all 0.3s ease;
+}
+
+.dash-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.dash-card-label {
+  font-size: 0.7rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text-muted);
+  margin-bottom: var(--space-xs);
+}
+
+.dash-card-value {
+  font-size: 1.25rem;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  letter-spacing: -0.5px;
+}
+
+.dash-card-value.cyan {
+  color: var(--accent-cyan);
+}
+
+.dash-card-value.gold {
+  color: var(--accent-gold);
+}
+
+.dash-card-value.green {
+  color: var(--accent-green);
+}
+
+.dash-card-value.red {
+  color: var(--accent-red);
+}
+
+.dash-card-value.magenta {
+  color: var(--accent-magenta);
+}
+
+.dash-card-value.blue {
+  color: var(--accent-blue);
+}
+
+.dash-card.full-width {
+  grid-column: 1 / -1;
+}
+
+/* ── 매매 단계 배지 ── */
+.phase-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+.phase-badge::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  animation: pulse-dot 2s ease-in-out infinite;
+}
+
+@keyframes pulse-dot {
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.4;
+  }
+}
+
+.phase-WATCHING {
+  background: rgba(68, 138, 255, 0.15);
+  color: var(--accent-blue);
+}
+
+.phase-WATCHING::before {
+  background: var(--accent-blue);
+}
+
+.phase-SIGNAL {
+  background: rgba(255, 213, 79, 0.15);
+  color: var(--accent-gold);
+}
+
+.phase-SIGNAL::before {
+  background: var(--accent-gold);
+}
+
+.phase-ENTRY_ZONE {
+  background: rgba(0, 229, 255, 0.15);
+  color: var(--accent-cyan);
+}
+
+.phase-ENTRY_ZONE::before {
+  background: var(--accent-cyan);
+}
+
+.phase-FIRST_BUY,
+.phase-SECOND_BUY {
+  background: rgba(0, 230, 118, 0.15);
+  color: var(--accent-green);
+}
+
+.phase-FIRST_BUY::before,
+.phase-SECOND_BUY::before {
+  background: var(--accent-green);
+}
+
+.phase-TAKE_PROFIT {
+  background: rgba(255, 64, 129, 0.15);
+  color: var(--accent-magenta);
+}
+
+.phase-TAKE_PROFIT::before {
+  background: var(--accent-magenta);
+}
+
+.phase-TIME_CUT {
+  background: rgba(255, 82, 82, 0.15);
+  color: var(--accent-red);
+}
+
+.phase-TIME_CUT::before {
+  background: var(--accent-red);
+}
+
+/* ── RN 라인 패널 ── */
+.rn-line-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  max-height: 350px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
+}
+
+.rn-line-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  transition: all 0.2s ease;
+  font-size: 0.85rem;
+}
+
+.rn-line-item:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.rn-line-item.above {
+  border-left: 3px solid var(--accent-gold);
+}
+
+.rn-line-item.below {
+  border-left: 3px solid var(--accent-cyan);
+}
+
+.rn-line-item.current {
+  background: rgba(0, 229, 255, 0.08);
+  border: 1px solid rgba(0, 229, 255, 0.2);
+}
+
+.rn-price {
+  font-family: var(--font-mono);
+  font-weight: 600;
+}
+
+.rn-label {
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+}
+
+.rn-distance {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+}
+
+.rn-distance.positive {
+  color: var(--accent-gold);
+}
+
+.rn-distance.negative {
+  color: var(--accent-cyan);
+}
+
+/* ── 종목 체크리스트 ── */
+.filter-checklist {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.filter-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+  transition: all 0.2s ease;
+}
+
+.filter-icon {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.filter-icon.pass {
+  background: rgba(0, 230, 118, 0.2);
+  color: var(--accent-green);
+}
+
+.filter-icon.fail {
+  background: rgba(255, 82, 82, 0.2);
+  color: var(--accent-red);
+}
+
+.filter-text {
+  flex: 1;
+}
+
+.filter-value {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+/* ── 5계명 패널 ── */
+.rules-panel {
+  cursor: pointer;
+}
+
+.rules-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  background: none;
+  border: none;
+  color: var(--text-primary);
+  cursor: pointer;
+  font-family: var(--font-family);
+}
+
+.rules-toggle-icon {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  transition: transform 0.3s ease;
+}
+
+.rules-toggle-icon.open {
+  transform: rotate(180deg);
+}
+
+.rules-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  margin-top: var(--space-md);
+  animation: slideDown 0.3s ease;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.rule-item {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.02);
+  font-size: 0.8rem;
+  line-height: 1.5;
+  color: var(--text-secondary);
+  border-left: 2px solid var(--accent-gold);
+}
+
+.rule-number {
+  font-weight: 700;
+  color: var(--accent-gold);
+  flex-shrink: 0;
+  font-family: var(--font-mono);
+}
+
+/* ── 반응형 ── */
+@media (max-width: 1024px) {
+  .main-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .right-panel {
+    order: -1;
+  }
+
+  .dashboard-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .app {
+    padding: var(--space-md);
+  }
+
+  .dashboard-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .chart-container {
+    height: 300px;
+  }
+
+  .stock-selector {
+    gap: var(--space-xs);
+  }
+
+  .stock-tab {
+    min-width: 100px;
+    padding: var(--space-xs) var(--space-sm);
+  }
+}
+
+/* ────── 종목 스캐너 ────────────────── */
+.scanner-section {
+  padding: 24px;
+  margin-bottom: 24px;
+}
+
+.scanner-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+}
+
+.scanner-subtitle {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+.refresh-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+  color: var(--text-secondary);
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.refresh-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-primary);
+}
+
+.refresh-btn.loading {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.scanner-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+.column-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.column-label.entry {
+  color: #4ade80;
+}
+
+.column-label.watch {
+  color: #facc15;
+}
+
+.scanner-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 240px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.scanner-item {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid transparent;
+  border-radius: 8px;
+  padding: 10px 14px;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.scanner-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.1);
+  transform: translateX(4px);
+}
+
+.scanner-item.active {
+  background: rgba(0, 229, 255, 0.1);
+  border-color: var(--accent-cyan, #00e5ff);
+}
+
+.item-main {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+.item-name {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.item-price {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+}
+
+.item-footer {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.75rem;
+}
+
+.item-gap {
+  font-weight: 500;
+}
+
+.column-label.entry+.scanner-list .item-gap {
+  color: #4ade80;
+}
+
+.column-label.watch+.scanner-list .item-gap {
+  color: #facc15;
+}
+
+.item-sector {
+  color: var(--text-muted);
+}
+
+.empty-msg {
+  padding: 30px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 8px;
+  border: 1px dashed var(--border-color, rgba(255, 255, 255, 0.1));
+}

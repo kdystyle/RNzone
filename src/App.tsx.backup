@@ -1,0 +1,8 @@
+export default function App() {
+    return (
+        <div style={{ backgroundColor: '#06060f', color: 'white', height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2rem' }}>
+            <h1>RN 존 시스템 로드 성공!</h1>
+            <p>화면이 보이시면 이 메시지가 출력됩니다.</p>
+        </div>
+    );
+}

@@ -29,16 +29,18 @@ export function isConfigured() {
  * OAuth 접근 토큰 발급
  * 왜 서버에서 하는가? → 브라우저에서 직접 하면 CORS 차단 +
  *   App Secret이 노출되므로 반드시 백엔드에서 처리
+ * @param {boolean} forceRefresh - 강제 재발급 여부
  */
-async function getAccessToken() {
-    // 토큰이 아직 유효하면 재사용
-    if (accessToken && Date.now() < tokenExpiry) {
+async function getAccessToken(forceRefresh = false) {
+    // 토큰이 아직 유효하면 재사용 (강제 갱신이 아닐 때만)
+    if (!forceRefresh && accessToken && Date.now() < tokenExpiry) {
         return accessToken;
     }
 
     const { appKey, appSecret, baseUrl } = getConfig();
 
     try {
+        console.log(`[KIS] 토큰 발급 요청 중...${forceRefresh ? ' (강제 재발급)' : ''}`);
         const res = await fetch(`${baseUrl}/oauth2/tokenP`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json; charset=utf-8' },
@@ -83,18 +85,47 @@ async function makeHeaders(trId) {
 }
 
 /**
+ * 401 인증 에러 발생 시 토큰을 재발급받고 재시도하는 공통 래퍼
+ */
+async function requestWithRetry(url, trId, searchParams = {}) {
+    const { baseUrl } = getConfig();
+    const fullUrl = new URL(url.startsWith('http') ? url : `${baseUrl}${url}`);
+
+    Object.entries(searchParams).forEach(([key, val]) => {
+        if (val !== undefined && val !== null) fullUrl.searchParams.set(key, val);
+    });
+
+    const callApi = async () => {
+        const headers = await makeHeaders(trId);
+        return fetch(fullUrl.toString(), { headers });
+    };
+
+    let res = await callApi();
+
+    // 401 Unauthorized 발생 시 토큰 강제 갱신 후 1회 재시도
+    if (res.status === 401) {
+        console.warn(`[KIS] 401 Unauthorized 발생. 토큰 재발급 후 재시도 합니다. (${trId})`);
+        await getAccessToken(true); // 강제 갱신
+        res = await callApi();
+    }
+
+    return res;
+}
+
+/**
  * 주식 현재가 조회
  * 반환: { price, marketCap, sector, name, volume, tradingValue }
  */
 export async function getCurrentPrice(stockCode) {
-    const { baseUrl } = getConfig();
-    const headers = await makeHeaders('FHKST01010100');
+    const res = await requestWithRetry(
+        '/uapi/domestic-stock/v1/quotations/inquire-price',
+        'FHKST01010100',
+        {
+            FID_COND_MRKT_DIV_CODE: 'J',
+            FID_INPUT_ISCD: stockCode
+        }
+    );
 
-    const url = new URL(`${baseUrl}/uapi/domestic-stock/v1/quotations/inquire-price`);
-    url.searchParams.set('FID_COND_MRKT_DIV_CODE', 'J'); // 주식
-    url.searchParams.set('FID_INPUT_ISCD', stockCode);
-
-    const res = await fetch(url.toString(), { headers });
     if (!res.ok) {
         const errorText = await res.text();
         console.error(`[KIS] 현재가 조회 실패: ${res.status}`, errorText);
@@ -124,54 +155,53 @@ export async function getCurrentPrice(stockCode) {
  * 반환: CandleData[] (프론트엔드 타입과 호환)
  */
 export async function getDailyCandles(stockCode, startDate, endDate) {
-    const { baseUrl } = getConfig();
-    const headers = await makeHeaders('FHKST03010100');
+    const res = await requestWithRetry(
+        '/uapi/domestic-stock/v1/quotations/inquire-daily-itemchartprice',
+        'FHKST03010100',
+        {
+            FID_COND_MRKT_DIV_CODE: 'J',
+            FID_INPUT_ISCD: stockCode,
+            FID_INPUT_DATE_1: startDate,
+            FID_INPUT_DATE_2: endDate,
+            FID_PERIOD_DIV_CODE: 'D',
+            FID_ORG_ADJ_PRC: '0'
+        }
+    );
 
-    const url = new URL(`${baseUrl}/uapi/domestic-stock/v1/quotations/inquire-daily-itemchartprice`);
-    url.searchParams.set('FID_COND_MRKT_DIV_CODE', 'J');
-    url.searchParams.set('FID_INPUT_ISCD', stockCode);
-    url.searchParams.set('FID_INPUT_DATE_1', startDate);  // YYYYMMDD
-    url.searchParams.set('FID_INPUT_DATE_2', endDate);    // YYYYMMDD
-    url.searchParams.set('FID_PERIOD_DIV_CODE', 'D');     // 일봉
-    url.searchParams.set('FID_ORG_ADJ_PRC', '0');         // 수정주가 미사용
-
-    const res = await fetch(url.toString(), { headers });
     if (!res.ok) throw new Error(`일봉 조회 실패: ${res.status}`);
 
     const { output2 } = await res.json();
-
     if (!output2 || !Array.isArray(output2)) return [];
 
-    // KIS는 최신 날짜가 먼저 오므로 reverse
     return output2
-        .filter((d) => d.stck_bsop_date) // 빈 데이터 제거
+        .filter((d) => d.stck_bsop_date)
         .map((d) => ({
             time: `${d.stck_bsop_date.slice(0, 4)}-${d.stck_bsop_date.slice(4, 6)}-${d.stck_bsop_date.slice(6, 8)}`,
             open: Number(d.stck_oprc),
             high: Number(d.stck_hgpr),
             low: Number(d.stck_lwpr),
             close: Number(d.stck_clpr),
-            tradingValue: Math.round(Number(d.acml_tr_pbmn) / 100000000), // 억 단위
+            tradingValue: Math.round(Number(d.acml_tr_pbmn) / 100000000),
         }))
-        .reverse(); // 오래된 날짜가 먼저 오도록
+        .reverse();
 }
 
 /**
  * 종목 기본 정보 조회 (업종 포함)
  */
 export async function getStockInfo(stockCode) {
-    const { baseUrl } = getConfig();
-    const headers = await makeHeaders('CTPF1002R');
+    const res = await requestWithRetry(
+        '/uapi/domestic-stock/v1/quotations/search-stock-info',
+        'CTPF1002R',
+        {
+            PRDT_TYPE_CD: '300',
+            PDNO: stockCode
+        }
+    );
 
-    const url = new URL(`${baseUrl}/uapi/domestic-stock/v1/quotations/search-stock-info`);
-    url.searchParams.set('PRDT_TYPE_CD', '300'); // 주식
-    url.searchParams.set('PDNO', stockCode);
-
-    const res = await fetch(url.toString(), { headers });
     if (!res.ok) throw new Error(`종목 정보 조회 실패: ${res.status}`);
 
     const { output } = await res.json();
-
     return {
         code: stockCode,
         name: output.prdt_abrv_name || '',
@@ -185,33 +215,33 @@ export async function getStockInfo(stockCode) {
  * TR: FHKST01013100
  */
 export async function getMarketLeaders() {
-    const { baseUrl } = getConfig();
-    const headers = await makeHeaders('FHKST01013100');
+    const res = await requestWithRetry(
+        '/uapi/domestic-stock/v1/quotations/volume-rank',
+        'FHKST01013100',
+        {
+            FID_COND_MRKT_DIV_CODE: 'J',
+            FID_COND_SCR_DIV_CODE: '20131',
+            FID_INPUT_ISCD: '0000',
+            FID_DIV_CLS_CODE: '0',
+            FID_BLNG_CLS_CODE: '0',
+            FID_TRGT_CLS_CODE: '0',
+            FID_TRGT_EXLS_CLS_CODE: '0',
+            FID_INPUT_PRICE_1: '',
+            FID_INPUT_PRICE_2: '',
+            FID_VOL_CNT: '',
+            FID_INPUT_DATE_1: ''
+        }
+    );
 
-    const url = new URL(`${baseUrl}/uapi/domestic-stock/v1/quotations/volume-rank`);
-    url.searchParams.set('FID_COND_MRKT_DIV_CODE', 'J'); // 주식
-    url.searchParams.set('FID_COND_SCR_DIV_CODE', '20131');
-    url.searchParams.set('FID_INPUT_ISCD', '0000'); // 전체
-    url.searchParams.set('FID_DIV_CLS_CODE', '0'); // 전체
-    url.searchParams.set('FID_BLNG_CLS_CODE', '0'); // 전체
-    url.searchParams.set('FID_TRGT_CLS_CODE', '0'); // 전체
-    url.searchParams.set('FID_TRGT_EXLS_CLS_CODE', '0'); // 전체
-    url.searchParams.set('FID_INPUT_PRICE_1', ''); // 가격 하한
-    url.searchParams.set('FID_INPUT_PRICE_2', ''); // 가격 상한
-    url.searchParams.set('FID_VOL_CNT', ''); // 거래량 조건
-    url.searchParams.set('FID_INPUT_DATE_1', '');
-
-    const res = await fetch(url.toString(), { headers });
     if (!res.ok) throw new Error(`주도주 조회 실패: ${res.status}`);
 
     const { output } = await res.json();
     if (!output || !Array.isArray(output)) return [];
 
-    // 거래대금(hts_tr_pbmn) 상위순으로 반환됨
     return output.slice(0, 50).map(d => ({
         code: d.mksc_shrn_iscd,
         name: d.hts_kor_isnm,
-        tradingValue: Math.round(Number(d.hts_tr_pbmn) / 100), // 억 단위 근사
+        tradingValue: Math.round(Number(d.hts_tr_pbmn) / 100),
     }));
 }
 
@@ -220,14 +250,14 @@ export async function getMarketLeaders() {
  * TR: FHKST01010400
  */
 export async function getMultiPrices(stockCodes) {
-    const { baseUrl } = getConfig();
-    const headers = await makeHeaders('FHKST01010400');
+    const res = await requestWithRetry(
+        '/uapi/domestic-stock/v1/quotations/interesting-items',
+        'FHKST01010400',
+        {
+            FID_INPUT_ISCD_1: stockCodes.join('|')
+        }
+    );
 
-    const url = new URL(`${baseUrl}/uapi/domestic-stock/v1/quotations/interesting-items`);
-    // 종목코드들을 | 로 연결 (최대 50개)
-    url.searchParams.set('FID_INPUT_ISCD_1', stockCodes.join('|'));
-
-    const res = await fetch(url.toString(), { headers });
     if (!res.ok) throw new Error(`다종목 조회 실패: ${res.status}`);
 
     const { output } = await res.json();
@@ -241,4 +271,5 @@ export async function getMultiPrices(stockCodes) {
         changeRate: Number(d.prdy_ctrt),
     }));
 }
+
 

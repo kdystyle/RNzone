@@ -7,7 +7,7 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import { isConfigured, getCurrentPrice, getDailyCandles, getMarketLeaders, getMultiPrices } from './kis.js';
+import { getCurrentPrice, getDailyCandles, getMarketLeaders, getMultiPrices } from './naver.js';
 import { searchStocks, STOCK_LIST } from './stockList.js';
 
 
@@ -20,12 +20,7 @@ const PORT = 3001;
 app.use(cors());
 app.use(express.json());
 
-// ── API 키 설정 여부 확인 ──
-const kisReady = isConfigured();
-console.log(kisReady
-    ? '✅ KIS API 키 설정 완료 — 실시간 데이터 모드'
-    : '⚠️ KIS API 키 미설정 — 목 데이터 모드 (.env 파일을 설정해주세요)'
-);
+console.log('✅ 네이버 증권 API 실시간 데이터 모드 활성화');
 
 // ── 종목 검색 ──
 // GET /api/search?q=삼성
@@ -52,28 +47,12 @@ app.get('/api/stock/:code', async (req, res) => {
         return res.status(404).json({ error: '종목을 찾을 수 없습니다' });
     }
 
-    // KIS API 키가 없으면 목 데이터 반환
-    if (!kisReady) {
-        return res.json({
-            ...stockInfo,
-            marketCap: stockInfo.tier === 'large' ? 50 : 5,
-            candles: generateMockCandles(code),
-            currentPrice: null,
-            source: 'mock',
-        });
-    }
-
     try {
-        console.log(`[SERVER] ${code} 데이터 조회 시작...`);
+        console.log(`[SERVER] ${code} 데이터 조회 시작 (네이버)...`);
 
-        // 실시간 데이터 조회 (각각 로그 추가)
-        console.log(`[SERVER] ${code} 현재가 조회 중...`);
+        // 실시간 데이터 조회
         const priceData = await getCurrentPrice(code);
-        console.log(`[SERVER] ${code} 현재가 조회 완료: ${priceData.price}`);
-
-        console.log(`[SERVER] ${code} 일봉 데이터 조회 중...`);
-        const candles = await getDailyCandles(code, getDateStr(-120), getDateStr(0));
-        console.log(`[SERVER] ${code} 일봉 데이터 조회 완료: ${candles.length}개`);
+        const candles = await getDailyCandles(code, 60); // 최근 60개 일봉
 
         res.json({
             ...stockInfo,
@@ -83,7 +62,7 @@ app.get('/api/stock/:code', async (req, res) => {
             change: priceData.change,
             changeRate: priceData.changeRate,
             tradingValue: priceData.tradingValue,
-            source: 'kis',
+            source: 'naver',
         });
     } catch (err) {
         console.error(`[ERROR] ${code} 데이터 조회 실패:`, err.message);
@@ -103,8 +82,8 @@ app.get('/api/stock/:code', async (req, res) => {
 app.get('/api/status', (_req, res) => {
     res.json({
         status: 'ok',
-        kisConfigured: kisReady,
-        mode: kisReady ? 'live' : 'mock',
+        mode: 'live',
+        source: 'naver',
         stockCount: STOCK_LIST.length,
     });
 });
@@ -117,6 +96,7 @@ function getDateStr(daysOffset) {
 }
 
 function generateMockCandles(code) {
+    // ... (기존 Mock 데이터 생성 로직 유지)
     // 종목 코드를 시드로 사용하여 결정적 데이터 생성
     const seed = parseInt(code, 10);
     const basePrice = ((seed % 50) + 5) * 10000; // 5만~55만 사이
@@ -147,18 +127,11 @@ function generateMockCandles(code) {
 }
 
 
-// ── 종목 스캐너 (고도화 버전) ──
+// ── 종목 스캐너 (네이버 버전) ──
 // 실시간 거래대금 상위 종목(주도주)을 가져와서 RN 존 여부 판별
 app.get('/api/scanner', async (req, res) => {
-    if (!kisReady) {
-        return res.json({
-            results: STOCK_LIST.slice(0, 5).map(s => ({ ...s, status: 'entry', gap: 1.2, currentPrice: 50000 })),
-            mode: 'mock'
-        });
-    }
-
     try {
-        console.log('[SCANNER] 실시간 주도주 스캔 시작...');
+        console.log('[SCANNER] 실시간 주도주 스캔 시작 (네이버)...');
 
         // 1. 거래대금 상위 주도주 50개 추출
         const leaders = await getMarketLeaders();
@@ -166,7 +139,7 @@ app.get('/api/scanner', async (req, res) => {
             return res.json({ results: [], mode: 'live', message: '주도주 데이터를 찾을 수 없습니다' });
         }
 
-        // 2. 주도주들의 현재가 일괄 조회 (최대 50개)
+        // 2. 주도주들의 현재가 일괄 조회
         const itemCodes = leaders.map(l => l.code);
         const prices = await getMultiPrices(itemCodes);
 
@@ -226,7 +199,7 @@ app.get('/api/scanner', async (req, res) => {
 // ── 서버 실행 (Vercel 환경이 아닐 때만) ──
 if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
     app.listen(PORT, () => {
-        console.log(`\n🚀 RN존 백엔드 서버 시작: http://localhost:${PORT}`);
+        console.log(`\n🚀 RN존 백엔드 서버 시작 (네이버): http://localhost:${PORT}`);
         console.log(`   - 종목 검색: GET /api/search?q=삼성`);
         console.log(`   - 종목 데이터: GET /api/stock/005930`);
         console.log(`   - 서버 상태: GET /api/status\n`);

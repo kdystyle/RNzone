@@ -40,15 +40,15 @@ export interface StockApiResponse {
     change?: number;
     changeRate?: number;
     tradingValue?: number;
-    source: 'kis' | 'mock' | 'mock-fallback';
+    source: 'naver' | 'mock' | 'mock-fallback';
     error?: string;
 }
 
 /** 서버 상태 */
 export interface ServerStatus {
     status: string;
-    kisConfigured: boolean;
     mode: 'live' | 'mock';
+    source: string;
     stockCount: number;
 }
 

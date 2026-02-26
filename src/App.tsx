@@ -40,7 +40,7 @@ export default function App() {
     // ── 서버 상태 확인 (마운트 시 1회) ──
     useEffect(() => {
         checkServerStatus()
-            .then((status) => setServerMode(status.kisConfigured ? 'live' : 'mock'))
+            .then((status) => setServerMode(status.mode === 'live' ? 'live' : 'mock'))
             .catch(() => setServerMode('offline'));
     }, []);
 
@@ -137,7 +137,7 @@ export default function App() {
                 <div className="server-status">
                     <span className={`status-dot ${serverMode}`} />
                     <span className="status-text">
-                        {serverMode === 'live' ? 'KIS 실시간' :
+                        {serverMode === 'live' ? '네이버 실시간' :
                             serverMode === 'mock' ? '목 데이터' : '확인 중...'}
                     </span>
                 </div>
